@@ -27,35 +27,6 @@ if [[ -v _P9K_SOURCED ]]; then
   return
 fi
 
-if ! autoload -U is-at-least || ! is-at-least 5.2; then
-  () {
-    >&2 echo -E "You are using ZSH version $ZSH_VERSION. The minimum required version for Powerlevel10k is 5.2."
-    >&2 echo -E "Type 'echo \$ZSH_VERSION' to see your current zsh version."
-    local def=${SHELL:c:A}
-    local cur=${${ZSH_ARGZERO#-}:c:A}
-    local cur_v=$($cur -c 'echo -E $ZSH_VERSION' 2>/dev/null)
-    if [[ $cur_v == $ZSH_VERSION && $cur != $def ]]; then
-      >&2 echo -E "The shell you are currently running is likely $cur."
-    fi
-    local other=${${:-zsh}:c}
-    if [[ -n $other ]] && $other -c 'autoload -U is-at-least && is-at-least 5.2' &>/dev/null; then
-      local other_v=$($other -c 'echo -E $ZSH_VERSION' 2>/dev/null)
-      if [[ -n $other_v && $other_v != $ZSH_VERSION ]]; then
-        >&2 echo -E "You have $other with version $other_v but this is not what you are using."
-        if [[ -n $def && $def != ${other:A} ]]; then
-          >&2 echo -E "To change your user shell, type the following command:"
-          >&2 echo -E ""
-          if [[ $(grep -F $other /etc/shells 2>/dev/null) != $other ]]; then
-            >&2 echo -E "  echo ${(q-)other} | sudo tee -a /etc/shells"
-          fi
-          >&2 echo -E "  chsh -s ${(q-)other}"
-        fi
-      fi
-    fi
-  }
-  return 1
-fi
-
 readonly _P9K_SOURCED=1
 
 typeset -g _P9K_INSTALLATION_DIR
@@ -658,7 +629,7 @@ prompt_public_ip() {
 # Note that if $DEFAULT_USER is not set, this prompt segment will always print
 set_default POWERLEVEL9K_ALWAYS_SHOW_CONTEXT false
 set_default POWERLEVEL9K_ALWAYS_SHOW_USER false
-set_default POWERLEVEL9K_CONTEXT_TEMPLATE "%n@%m"
+set_default POWERLEVEL9K_CONTEXT_TEMPLATE "%n"
 prompt_context() {
   local content
   if [[ $POWERLEVEL9K_ALWAYS_SHOW_CONTEXT == true || -z $DEFAULT_USER || -n $SSH_CLIENT || -n $SSH_TTY ]]; then
@@ -1677,7 +1648,7 @@ function _p9k_vcs_style() {
 function _p9k_vcs_render() {
   if [[ -v _P9K_NEXT_VCS_DIR ]]; then
     local -a msg
-    local dir=${${GIT_DIR:a}:-$PWD}
+    local dir=$PWD
     while true; do
       msg=("${(@0)${_P9K_LAST_GIT_PROMPT[$dir]}}")
       [[ $#msg != 0 || $dir == / ]] && break
@@ -1861,9 +1832,9 @@ function _p9k_vcs_gitstatus() {
   [[ $POWERLEVEL9K_DISABLE_GITSTATUS == true ]] && return 1
   if [[ $_P9K_REFRESH_REASON == precmd ]]; then
     if [[ -v _P9K_NEXT_VCS_DIR ]]; then
-      typeset -gH _P9K_NEXT_VCS_DIR=${${GIT_DIR:a}:-$PWD}
+      typeset -gH _P9K_NEXT_VCS_DIR=$PWD
     else
-      local dir=${${GIT_DIR:a}:-$PWD}
+      local dir=$PWD
       local -F timeout=$POWERLEVEL9K_VCS_MAX_SYNC_LATENCY_SECONDS
       while true; do
         case "$_P9K_GIT_SLOW[$dir]" in
@@ -1873,7 +1844,7 @@ function _p9k_vcs_gitstatus() {
         esac
       done
       typeset -gFH _P9K_GITSTATUS_START_TIME=$EPOCHREALTIME
-      gitstatus_query -d ${${GIT_DIR:a}:-$PWD} -t $timeout -c _p9k_vcs_resume POWERLEVEL9K || return 1
+      gitstatus_query -t $timeout -c _p9k_vcs_resume POWERLEVEL9K || return 1
       [[ $VCS_STATUS_RESULT == tout ]] && typeset -gH _P9K_NEXT_VCS_DIR=""
     fi
   fi
@@ -2069,7 +2040,7 @@ build_left_prompt() {
 }
 
 # Right prompt
-set_default -a POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS status root_indicator background_jobs history time
+set_default -a POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS status root_indicator background_jobs vi_mode
 build_right_prompt() {
   local -i index=1
   local element
